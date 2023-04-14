@@ -446,6 +446,7 @@ void loadServerConfigFromString(char *config) {
         }
 
         /* Execute config directives */
+        // 根据参数名进行匹配
         if (!strcasecmp(argv[0],"bind") && argc >= 2) {
             int j, addresses = argc-1;
 
@@ -674,6 +675,7 @@ void loadServerConfig(char *filename, char config_from_stdin, char *options) {
         config = sdscat(config,"\n");
         config = sdscat(config,options);
     }
+    // 匹配解析的配置项
     loadServerConfigFromString(config);
     sdsfree(config);
 }
