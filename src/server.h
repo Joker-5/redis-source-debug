@@ -95,8 +95,12 @@ typedef long long ustime_t; /* microsecond time type. */
 #define C_ERR                   -1
 
 /* Static server configuration */
+// 下面的宏中包含 Redis 运行参数默认值，这些默认值都以 CONFIG_DEFAULT_ 开头
+// server 后台任务的默认运行频率
 #define CONFIG_DEFAULT_HZ        10             /* Time interrupt calls/sec. */
+// server 后台任务的最小运行频率
 #define CONFIG_MIN_HZ            1
+// server 后台任务的最大运行频率
 #define CONFIG_MAX_HZ            500
 #define MAX_CLIENTS_PER_CLOCK_TICK 200          /* HZ is adapted based on that. */
 #define CONFIG_MAX_LINE    1024

@@ -3172,6 +3172,7 @@ void initServer(void) {
     }
 
     /* Initialization after setting defaults from the config system. */
+    // 初始化 server 相关属性
     server.aof_state = server.aof_enabled ? AOF_ON : AOF_OFF;
     server.hz = server.config_hz;
     server.pid = getpid();
@@ -3213,6 +3214,7 @@ void initServer(void) {
     adjustOpenFilesLimit();
     const char *clk_msg = monotonicInit();
     serverLog(LL_NOTICE, "monotonic clock: %s", clk_msg);
+    // 创建事件驱动框架
     server.el = aeCreateEventLoop(server.maxclients+CONFIG_FDSET_INCR);
     if (server.el == NULL) {
         serverLog(LL_WARNING,
@@ -3223,6 +3225,7 @@ void initServer(void) {
     server.db = zmalloc(sizeof(redisDb)*server.dbnum);
 
     /* Open the TCP listening socket for the user commands. */
+    // 监听设置的网络端口
     if (server.port != 0 &&
         listenToPort(server.port,&server.ipfd) == C_ERR) {
         /* Note: the following log text is matched by the test suite. */
@@ -3256,12 +3259,18 @@ void initServer(void) {
     }
 
     /* Create the Redis databases, and initialize other internal state. */
+    // 初始化 Redis 键值对数据库，每个数据库都要初始化
     for (j = 0; j < server.dbnum; j++) {
+        // 创建全局哈希表
         server.db[j].dict = dictCreate(&dbDictType,NULL);
+        // 创建过期 key 的信息表
         server.db[j].expires = dictCreate(&dbExpiresDictType,NULL);
         server.db[j].expires_cursor = 0;
+        // 创建被 BLPOP 阻塞的 key 的信息表
         server.db[j].blocking_keys = dictCreate(&keylistDictType,NULL);
+        // 创建将执行 PUSH 的阻塞 key 的信息表
         server.db[j].ready_keys = dictCreate(&objectKeyPointerValueDictType,NULL);
+        // 创建被 MULTI/WATCH 操作监听的key 的信息表
         server.db[j].watched_keys = dictCreate(&keylistDictType,NULL);
         server.db[j].id = j;
         server.db[j].avg_ttl = 0;
@@ -3322,6 +3331,7 @@ void initServer(void) {
     /* Create the timer callback, this is our way to process many background
      * operations incrementally, like clients timeout, eviction of unaccessed
      * expired keys and so forth. */
+    // 为 server 后台任务创建定时事件
     if (aeCreateTimeEvent(server.el, 1, serverCron, NULL, NULL) == AE_ERR) {
         serverPanic("Can't create event loop timers.");
         exit(1);
@@ -3329,6 +3339,7 @@ void initServer(void) {
 
     /* Create an event handler for accepting new connections in TCP and Unix
      * domain sockets. */
+    // 为每一个监听的 IP 设置连接事件的处理函数 acceptTcpHandler
     if (createSocketAcceptHandler(&server.ipfd, acceptTcpHandler) != C_OK) {
         serverPanic("Unrecoverable error creating TCP socket accept handler.");
     }
@@ -6272,6 +6283,7 @@ int main(int argc, char **argv) {
 #ifdef INIT_SETPROCTITLE_REPLACEMENT
     spt_init(argc, argv);
 #endif
+    // 设置时区
     setlocale(LC_COLLATE,"");
     tzset(); /* Populates 'timezone' global. */
     zmalloc_set_oom_handler(redisOutOfMemoryHandler);
@@ -6290,10 +6302,12 @@ int main(int argc, char **argv) {
      */
     umask(server.umask = umask(0777));
 
+    // 设置随机种子
     uint8_t hashseed[16];
     getRandomBytes(hashseed,sizeof(hashseed));
     dictSetHashFunctionSeed(hashseed);
     server.sentinel_mode = checkForSentinelMode(argc,argv);
+    // 为 Redis 运行参数设置默认值
     initServerConfig();
     ACLInit(); /* The ACL subsystem must be initialized ASAP because the
                   basic networking code and client creation depends on it. */
@@ -6310,16 +6324,21 @@ int main(int argc, char **argv) {
     /* We need to init sentinel right now as parsing the configuration file
      * in sentinel mode will have the effect of populating the sentinel
      * data structures with master nodes to monitor. */
+    // 判断 server 是否是 sentinel 哨兵模式
     if (server.sentinel_mode) {
+        // 初始化哨兵模式的配置
         initSentinelConfig();
+        // 初始化哨兵模式
         initSentinel();
     }
 
     /* Check if we need to start in redis-check-rdb/aof mode. We just execute
      * the program main. However the program is part of the Redis executable
      * so that we can easily execute an RDB check on loading errors. */
+    // 如果运行的是 redis-check-rdb 程序，调用 redis_check_rdb_main 函数检测RDB文件
     if (strstr(argv[0],"redis-check-rdb") != NULL)
         redis_check_rdb_main(argc,argv,NULL);
+    // 如果运行的是 redis-check-aof 程序，调用 redis_check_aof_main 函数检测AOF文件    
     else if (strstr(argv[0],"redis-check-aof") != NULL)
         redis_check_aof_main(argc,argv);
 
@@ -6374,7 +6393,7 @@ int main(int argc, char **argv) {
             }
             j++;
         }
-
+        // 解析命令行与配置文件中的配置参数
         loadServerConfig(server.configfile, config_from_stdin, options);
         if (server.sentinel_mode) loadSentinelConfigFromQueue();
         sdsfree(options);
@@ -6400,6 +6419,7 @@ int main(int argc, char **argv) {
     }
 
     readOOMScoreAdj();
+    // 初始化 server
     initServer();
     if (background || server.pidfile) createPidFile();
     if (server.set_proc_title) redisSetProcTitle(NULL);
@@ -6471,6 +6491,7 @@ int main(int argc, char **argv) {
     redisSetCpuAffinity(server.server_cpulist);
     setOOMScoreAdj(-1);
 
+    // 执行事件驱动网络框架
     aeMain(server.el);
     aeDeleteEventLoop(server.el);
     return 0;
