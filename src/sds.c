@@ -100,18 +100,23 @@ static inline size_t sdsTypeMaxSize(char type) {
  * You can print the string with printf() as there is an implicit \0 at the
  * end of the string. However the string is binary safe and can contain
  * \0 characters in the middle, as the length is stored in the sds header. */
+// 创建一个 SDS 串
 sds _sdsnewlen(const void *init, size_t initlen, int trymalloc) {
+    // 指向SDS结构体的指针
     void *sh;
+    // sds 类型变量，即 char* 字符数组
     sds s;
     char type = sdsReqType(initlen);
     /* Empty strings are usually created in order to append. Use type 8
      * since type 5 is not good at this. */
     if (type == SDS_TYPE_5 && initlen == 0) type = SDS_TYPE_8;
+    // 根据 SDS 类型，获取 SDS 元数据的大小
     int hdrlen = sdsHdrSize(type);
     unsigned char *fp; /* flags pointer. */
     size_t usable;
 
     assert(initlen + hdrlen + 1 > initlen); /* Catch size_t overflow */
+    // 新建SDS结构，并分配内存空间
     sh = trymalloc?
         s_trymalloc_usable(hdrlen+initlen+1, &usable) :
         s_malloc_usable(hdrlen+initlen+1, &usable);
@@ -120,6 +125,8 @@ sds _sdsnewlen(const void *init, size_t initlen, int trymalloc) {
         init = NULL;
     else if (!init)
         memset(sh, 0, hdrlen+initlen+1);
+    // sds 类型变量指向 SDS 结构体中的 buf 数组，
+    // sh 指 SDS 结构体起始位置，hdrlen 是 SDS 结构体中元数据的长度    
     s = (char*)sh+hdrlen;
     fp = ((unsigned char*)s)-1;
     usable = usable-hdrlen-1;
@@ -159,12 +166,15 @@ sds _sdsnewlen(const void *init, size_t initlen, int trymalloc) {
             break;
         }
     }
+    // 将要传入的字符串拷贝给 sds 变量 s
     if (initlen && init)
         memcpy(s, init, initlen);
+    // 标识字符串结束
     s[initlen] = '\0';
     return s;
 }
 
+// 创建一个 SDS 串
 sds sdsnewlen(const void *init, size_t initlen) {
     return _sdsnewlen(init, initlen, 0);
 }
@@ -461,13 +471,19 @@ sds sdsgrowzero(sds s, size_t len) {
  *
  * After the call, the passed sds string is no longer valid and all the
  * references must be substituted with the new pointer returned by the call. */
+// 拼接 SDS
 sds sdscatlen(sds s, const void *t, size_t len) {
+    // 获取目标字符串 s 的当前长度
     size_t curlen = sdslen(s);
 
+    // 根据要追加的长度 len 和目标字符串 s 的现有长度，判断是否要增加新的空间
     s = sdsMakeRoomFor(s,len);
     if (s == NULL) return NULL;
+    // 将源字符串 t 中 len 长度的数据拷贝到目标字符串结尾
     memcpy(s+curlen, t, len);
+    // 设置目标字符串的最新长度，即拷贝前长度 curlen + 拷贝长度 len
     sdssetlen(s, curlen+len);
+    // 更新字符串结束标识
     s[curlen+len] = '\0';
     return s;
 }

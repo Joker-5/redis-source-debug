@@ -40,33 +40,47 @@ extern const char *SDS_NOINIT;
 #include <stdarg.h>
 #include <stdint.h>
 
+// char* 的别名就是 SDS，也就是说，SDS 本质上就是一个字符数组，只不过是在此基础上添加了一些元数据
 typedef char *sds;
 
+// 下面的 sdshdr${x} 结构体表示不同的 SDS 类型，
+// 目前共有 5、8、16、32、64 共 5 种类型，
+// Redis 会根据数据大小来选择合适的类型存储数据，
+// 结构体中应用了 __attribute__ ((__packed__))，即采用紧凑方式分配内存
 /* Note: sdshdr5 is never used, we just access the flags byte directly.
  * However is here to document the layout of type 5 SDS strings. */
+// sdshdr5 并没有在 Redis 中使用
 struct __attribute__ ((__packed__)) sdshdr5 {
     unsigned char flags; /* 3 lsb of type, and 5 msb of string length */
     char buf[];
 };
 struct __attribute__ ((__packed__)) sdshdr8 {
+    // uint8_t 表示字符串长度不会超过 2^{8} = 256 字节，属性本身占 sizeof(uint8_t) = 1 字节
+    // 字符串现有长度
     uint8_t len; /* used */
+    // 字符数组的已分配空间，不包括结构体和 \0 结束字符
     uint8_t alloc; /* excluding the header and null terminator */
+    // SDS 的类型
     unsigned char flags; /* 3 lsb of type, 5 unused bits */
+    // 字符数组
     char buf[];
 };
 struct __attribute__ ((__packed__)) sdshdr16 {
+    // uint16_t 表示字符串长度不会超过 2^{16} 字节，属性本身占 sizeof(uint16_t) = 2 字节
     uint16_t len; /* used */
     uint16_t alloc; /* excluding the header and null terminator */
     unsigned char flags; /* 3 lsb of type, 5 unused bits */
     char buf[];
 };
 struct __attribute__ ((__packed__)) sdshdr32 {
+    // uint32_t 表示字符串长度不会超过 2^{32} 字节，属性本身占 sizeof(uint32_t) = 4 字节 
     uint32_t len; /* used */
     uint32_t alloc; /* excluding the header and null terminator */
     unsigned char flags; /* 3 lsb of type, 5 unused bits */
     char buf[];
 };
 struct __attribute__ ((__packed__)) sdshdr64 {
+    // uint64_t 表示字符串长度不会超过 2^{64} 字节，属性本身占 sizeof(uint64_t) = 8 字节
     uint64_t len; /* used */
     uint64_t alloc; /* excluding the header and null terminator */
     unsigned char flags; /* 3 lsb of type, 5 unused bits */
