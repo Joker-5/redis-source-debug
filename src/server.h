@@ -387,7 +387,9 @@ typedef enum {
 /* Anti-warning macro... */
 #define UNUSED(V) ((void) V)
 
+// skiplist 最大层数
 #define ZSKIPLIST_MAXLEVEL 32 /* Should be enough for 2^64 elements */
+// skiplist 开辟下一层 level 需要满足的最大概率
 #define ZSKIPLIST_P 0.25      /* Skiplist P = 1/4 */
 
 /* Append only defines */
@@ -1014,24 +1016,38 @@ struct sharedObjectsStruct {
 };
 
 /* ZSETs use a specialized version of Skiplists */
+// skiplist 节点定义
 typedef struct zskiplistNode {
+    // zset 中的元素
     sds ele;
+    // 元素的权重
     double score;
+    // 后向指针，指向当前节点的前一个节点
     struct zskiplistNode *backward;
+    // level数组，保存每层中的前向指针和跨度
     struct zskiplistLevel {
+        // 前向指针，指向当前节点的后一个节点
         struct zskiplistNode *forward;
+        // 跨度，记录节点在某一层上的 *forward 和该指针指向的结点之间，跨越了 level0 上的几个结点。
         unsigned long span;
     } level[];
 } zskiplistNode;
 
+// Redis skiplist 定义
 typedef struct zskiplist {
+    // 头尾指针
     struct zskiplistNode *header, *tail;
+    // skiplist 的长度
     unsigned long length;
+    // 当前 skiplist 的层数
     int level;
 } zskiplist;
 
+// zset 底层数据结构，采用了 hash 和 skiplist 的双索引机制
 typedef struct zset {
+    // hash 属性，用于支持高效单点查询
     dict *dict;
+    // skiplist 属性，用于支持高效范围查询
     zskiplist *zsl;
 } zset;
 
