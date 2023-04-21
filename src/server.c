@@ -1406,6 +1406,7 @@ dictType zsetDictType = {
 
 /* Db->dict, keys are sds strings, vals are Redis objects. */
 dictType dbDictType = {
+    // Hash 函数，可以看下其底层实现
     dictSdsHash,                /* hash function */
     NULL,                       /* key dup */
     NULL,                       /* val dup */
@@ -1589,6 +1590,7 @@ int incrementallyRehash(int dbid) {
  * memory pages are copied). The goal of this function is to update the ability
  * for dict.c to resize or rehash the tables accordingly to the fact we have an
  * active fork child running. */
+// 用于更新 rehash 策略
 void updateDictResizePolicy(void) {
     if (server.in_fork_child != CHILD_TYPE_NONE)
         dictSetResizeEnabled(DICT_RESIZE_FORBID);

@@ -47,6 +47,7 @@
 /* Unused arguments generate annoying warnings... */
 #define DICT_NOTUSED(V) ((void) V)
 
+// Redis Hash 表中的节点定义
 typedef struct dictEntry {
     void *key;
     union {
@@ -70,8 +71,11 @@ typedef struct dictType {
 
 /* This is our hash table structure. Every dictionary has two of this as we
  * implement incremental rehashing, for the old to the new table. */
+// Redis Hash 结构
 typedef struct dictht {
+    // 二维数组
     dictEntry **table;
+    // Hash 表大小
     unsigned long size;
     unsigned long sizemask;
     unsigned long used;
@@ -80,7 +84,9 @@ typedef struct dictht {
 typedef struct dict {
     dictType *type;
     void *privdata;
+    // 两个 Hash 表，交替使用，用于 rehash 操作
     dictht ht[2];
+    // Hash 表是否在进行 rehash 的标识，-1 表示没有进行 rehash 操作
     long rehashidx; /* rehashing not in progress if rehashidx == -1 */
     int16_t pauserehash; /* If >0 rehashing is paused (<0 indicates coding error) */
 } dict;
@@ -102,6 +108,7 @@ typedef void (dictScanFunction)(void *privdata, const dictEntry *de);
 typedef void (dictScanBucketFunction)(void *privdata, dictEntry **bucketref);
 
 /* This is the initial size of every hash table */
+// Hash 表的初始大小
 #define DICT_HT_INITIAL_SIZE     4
 
 /* ------------------------------- Macros ------------------------------------*/
@@ -160,9 +167,13 @@ typedef void (dictScanBucketFunction)(void *privdata, dictEntry **bucketref);
 #define randomULong() random()
 #endif
 
+// hash 扩容的 3 种状态
 typedef enum {
+    // 允许扩容
     DICT_RESIZE_ENABLE,
+    // 避免扩容
     DICT_RESIZE_AVOID,
+    // 禁止扩容
     DICT_RESIZE_FORBID,
 } dictResizeEnable;
 
