@@ -77,19 +77,28 @@ zskiplistNode *zslCreateNode(int level, double score, sds ele) {
 }
 
 /* Create a new skiplist. */
+// 创建一个 skiplist
 zskiplist *zslCreate(void) {
     int j;
     zskiplist *zsl;
 
+    // 为 skiplist 分配空间
     zsl = zmalloc(sizeof(*zsl));
+    // 初始层级为 1
     zsl->level = 1;
+    // 初始长度为 0
     zsl->length = 0;
+    // 创建头节点
     zsl->header = zslCreateNode(ZSKIPLIST_MAXLEVEL,0,NULL);
+    // 初始化 level 数组
     for (j = 0; j < ZSKIPLIST_MAXLEVEL; j++) {
         zsl->header->level[j].forward = NULL;
+        // 跨度初始化为 0
         zsl->header->level[j].span = 0;
     }
+    // 头节点后向指针指为空
     zsl->header->backward = NULL;
+    // 初始尾节点不会初始化
     zsl->tail = NULL;
     return zsl;
 }
@@ -119,10 +128,14 @@ void zslFree(zskiplist *zsl) {
  * The return value of this function is between 1 and ZSKIPLIST_MAXLEVEL
  * (both inclusive), with a powerlaw-alike distribution where higher
  * levels are less likely to be returned. */
+// 设置 skiplist 的层级，目的是实现查询性能和维护节点添加与删除开销的 trade-off
 int zslRandomLevel(void) {
+    // 初始层级为 1
     int level = 1;
+    // 随机数 < ZSKIPLIST_P(0.25)，则开辟下一层
     while ((random()&0xFFFF) < (ZSKIPLIST_P * 0xFFFF))
         level += 1;
+    // 当前 level 不能超过 ZSKIPLIST_MAXLEVEL(32)
     return (level<ZSKIPLIST_MAXLEVEL) ? level : ZSKIPLIST_MAXLEVEL;
 }
 
@@ -472,17 +485,24 @@ unsigned long zslDeleteRangeByRank(zskiplist *zsl, unsigned int start, unsigned 
  * Returns 0 when the element cannot be found, rank otherwise.
  * Note that the rank is 1-based due to the span of zsl->header to the
  * first element. */
+// 根据元素值和权重获取其在 skiplist 中的排名
 unsigned long zslGetRank(zskiplist *zsl, double score, sds ele) {
     zskiplistNode *x;
+    // 初始 rank 定义为 0
     unsigned long rank = 0;
     int i;
 
+    // 获取 skiplist 的表头
     x = zsl->header;
+    // 从最大层数开始逐一遍历
     for (i = zsl->level-1; i >= 0; i--) {
         while (x->level[i].forward &&
+            // 查找到的节点保存的元素权重 < 要查找的权重，
             (x->level[i].forward->score < score ||
+                // 或者查找到的节点保存的元素权重 = 要查找的权重，并且当前节点数据 < 要查找的数据时，
                 (x->level[i].forward->score == score &&
                 sdscmp(x->level[i].forward->ele,ele) <= 0))) {
+            // 继续访问该层的下一个节点
             rank += x->level[i].span;
             x = x->level[i].forward;
         }
@@ -491,6 +511,7 @@ unsigned long zslGetRank(zskiplist *zsl, double score, sds ele) {
         if (x->ele && sdscmp(x->ele,ele) == 0) {
             return rank;
         }
+        // 上面两个条件都不满足，for 循环访问下一层 level
     }
     return 0;
 }
@@ -1322,6 +1343,7 @@ int zsetScore(robj *zobj, sds member, double *score) {
  *
  * The function does not take ownership of the 'ele' SDS string, but copies
  * it if needed. */
+// 向 zset 中添加元素，为了保证数据的一致性，需要在向 skiplist 中插入数据时，同时也向 hash 中插入数据
 int zsetAdd(robj *zobj, double score, sds ele, int in_flags, int *out_flags, double *newscore) {
     /* Turn options into simple to check vars. */
     int incr = (in_flags & ZADD_IN_INCR) != 0;
@@ -1339,6 +1361,7 @@ int zsetAdd(robj *zobj, double score, sds ele, int in_flags, int *out_flags, dou
     }
 
     /* Update the sorted set according to its encoding. */
+    // 采用 ziplist 编码方式时，执行的处理逻辑
     if (zobj->encoding == OBJ_ENCODING_ZIPLIST) {
         unsigned char *eptr;
 
@@ -1395,12 +1418,15 @@ int zsetAdd(robj *zobj, double score, sds ele, int in_flags, int *out_flags, dou
 
     /* Note that the above block handling ziplist would have either returned or
      * converted the key to skiplist. */
+    // 采用 skiplist 编码方式时，执行的处理逻辑
     if (zobj->encoding == OBJ_ENCODING_SKIPLIST) {
         zset *zs = zobj->ptr;
         zskiplistNode *znode;
         dictEntry *de;
 
+        // 从 Hash 表中查询新增元素
         de = dictFind(zs->dict,ele);
+        // 元素已存在
         if (de != NULL) {
             /* NX? Return, same element already exists. */
             if (nx) {
@@ -1408,10 +1434,13 @@ int zsetAdd(robj *zobj, double score, sds ele, int in_flags, int *out_flags, dou
                 return 1;
             }
 
+            // 从 Hash 表中查询元素的权重
             curscore = *(double*)dictGetVal(de);
 
             /* Prepare the score for the increment if needed. */
+            // 如果要更新元素的权重值
             if (incr) {
+                // 执行更新操作
                 score += curscore;
                 if (isnan(score)) {
                     *out_flags |= ZADD_OUT_NAN;
@@ -1428,18 +1457,24 @@ int zsetAdd(robj *zobj, double score, sds ele, int in_flags, int *out_flags, dou
             if (newscore) *newscore = score;
 
             /* Remove and re-insert when score changes. */
+            // 权重发生变化
             if (score != curscore) {
+                // 更新跳表节点
                 znode = zslUpdateScore(zs->zsl,curscore,ele,score);
                 /* Note that we did not removed the original element from
                  * the hash table representing the sorted set, so we just
                  * update the score. */
+                // 让 Hash 表元素值指向跳表元素的权重
                 dictGetVal(de) = &znode->score; /* Update score ptr. */
                 *out_flags |= ZADD_OUT_UPDATED;
             }
             return 1;
+        // 元素不存在    
         } else if (!xx) {
             ele = sdsdup(ele);
+            // 向跳表中插入新节点
             znode = zslInsert(zs->zsl,score,ele);
+            // 向 Hash 表中插入新元素
             serverAssert(dictAdd(zs->dict,ele,&znode->score) == DICT_OK);
             *out_flags |= ZADD_OUT_ADDED;
             if (newscore) *newscore = score;

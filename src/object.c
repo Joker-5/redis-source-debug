@@ -287,11 +287,15 @@ robj *createHashObject(void) {
     return o;
 }
 
+// 创建一个 Sorted Set 对象
 robj *createZsetObject(void) {
+    // 为 zset 分配内存空间
     zset *zs = zmalloc(sizeof(*zs));
     robj *o;
 
+    // 创建 hash 属性
     zs->dict = dictCreate(&zsetDictType,NULL);
+    // 创建 skiplist 属性
     zs->zsl = zslCreate();
     o = createObject(OBJ_ZSET,zs);
     o->encoding = OBJ_ENCODING_SKIPLIST;
